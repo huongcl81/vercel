@@ -1,44 +1,45 @@
-const express = require('express');
-const WebSocket = require('ws');
-const { spawn } = require('child_process');
+import React, { useState } from 'react';
 
-const app = express();
-const port = process.env.PORT || 3000;
+export default function Home() {
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
 
-app.use(express.static('public'));
+  const runCommand = async () => {
+    if (!input.trim()) return;
+    setOutput(prev => prev + `> ${input}\n`);
+    try {
+      const res = await fetch('/api/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: input }),
+      });
+      const data = await res.json();
+      setOutput(prev => prev + (data.output || '') + '\n');
+    } catch (err) {
+      setOutput(prev => prev + 'Error: ' + err.message + '\n');
+    }
+    setInput('');
+  };
 
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // tránh xuống dòng trong textarea
+      runCommand();
+    }
+  };
 
-// Tạo WebSocket server trên cùng port
-const wss = new WebSocket.Server({ server });
-
-wss.on('connection', ws => {
-  console.log('Client connected');
-
-  // Mở shell bash
-  const shell = spawn('bash', [], { stdio: ['pipe', 'pipe', 'pipe'] });
-
-  // Khi shell có output thì gửi về client
-  shell.stdout.on('data', data => {
-    ws.send(data.toString());
-  });
-
-  shell.stderr.on('data', data => {
-    ws.send(data.toString());
-  });
-
-  shell.on('close', () => {
-    ws.close();
-  });
-
-  // Nhận lệnh từ client rồi đẩy vào shell
-  ws.on('message', message => {
-    shell.stdin.write(message + '\n');
-  });
-
-  ws.on('close', () => {
-    shell.kill();
-  });
-});
+  return (
+    <div style={{padding: 20, fontFamily: 'monospace'}}>
+      <pre style={{background: '#000', color: '#0f0', padding: 20, height: 400, overflowY: 'scroll'}}>
+        {output}
+      </pre>
+      <textarea
+        style={{width: '100%', height: 50, fontSize: 16, fontFamily: 'monospace'}}
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Type your command and press Enter..."
+      />
+    </div>
+  );
+}
