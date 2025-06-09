@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Web Terminal on Vercel</title>
+  <style>
+    body {
+      background: black;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 10px;
+    }
+    #terminal {
+      white-space: pre-wrap;
+      height: 80vh;
+      overflow-y: scroll;
+      border: 1px solid #00ff00;
+      padding: 10px;
+    }
+    input {
+      width: 100%;
+      background: black;
+      border: none;
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 16px;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <input id="input" autocomplete="off" autofocus placeholder="Type commands here..." />
+
+  <script>
+    const term = document.getElementById('terminal');
+    const input = document.getElementById('input');
+
+    // Connect đến WebSocket server
+    const ws = new WebSocket(`ws://${location.host}`);
+
+    ws.onmessage = event => {
+      term.textContent += event.data;
+      term.scrollTop = term.scrollHeight;
+    };
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        ws.send(input.value);
+        input.value = '';
+      }
+    });
+  </script>
+</body>
+</html>
